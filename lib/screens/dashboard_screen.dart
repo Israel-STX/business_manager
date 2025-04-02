@@ -105,6 +105,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                         "Date: ${intl.DateFormat.yMMMd('en_US').format(selectedJobDate)}",
                       ),
                       IconButton(
+                        key: Key('date_schedule'),
                         icon: const Icon(Icons.calendar_today),
                         onPressed: () async {
                           DateTime? pickedDate = await showDatePicker(
@@ -511,23 +512,27 @@ class DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
+          key: Key('dashboard_title'),
           'Dashboard',
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
+            key: Key('appointment_calendar'),
             icon: const Icon(Icons.calendar_month),
             onPressed: () {
               Navigator.pushNamed(context, '/calendar');
             },
           ),
           IconButton(
+            key: Key('services'),
             icon: const Icon(Icons.assignment),
             onPressed: () {
               Navigator.pushNamed(context, '/services');
             },
           ),
           IconButton(
+            key: Key('clients'),
             icon: const Icon(Icons.contacts),
             onPressed: () {
               Navigator.pushNamed(context, '/clients');
@@ -718,6 +723,7 @@ class DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        key: Key('add_job'),
         onPressed: _showAddJobDialog,
         child: const Icon(Icons.add),
       ),

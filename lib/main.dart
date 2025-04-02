@@ -16,11 +16,11 @@ class BusinessManagerApp extends StatelessWidget {
     return MaterialApp(
       title: 'Business Manager',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const DashboardScreen(),
+      home: DashboardScreen(),
       routes: {
-        '/clients': (context) => const ClientsScreen(),
-        '/services': (context) => const ServicesScreen(),
-        '/calendar': (context) => const CalendarScreen(),
+        '/clients': (context) => ClientsScreen(),
+        '/services': (context) => ServicesScreen(),
+        '/calendar': (context) => CalendarScreen(),
       },
     );
   }

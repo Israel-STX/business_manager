@@ -50,15 +50,15 @@ class ClientsScreenState extends State<ClientsScreen> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: "Client Name"),
+                decoration: InputDecoration(labelText: "Client Name"),
               ),
               TextField(
                 controller: addressController,
-                decoration: const InputDecoration(labelText: "Address"),
+                decoration: InputDecoration(labelText: "Address"),
               ),
               TextField(
                 controller: phoneController,
-                decoration: const InputDecoration(labelText: "Phone Number"),
+                decoration: InputDecoration(labelText: "Phone Number"),
                 keyboardType: TextInputType.phone,
               ),
             ],
@@ -70,7 +70,7 @@ class ClientsScreenState extends State<ClientsScreen> {
                   _showDeleteConfirmation(client);
                 },
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Delete'),
+                child: Text('Delete'),
               ),
             TextButton(
               onPressed: () async {
