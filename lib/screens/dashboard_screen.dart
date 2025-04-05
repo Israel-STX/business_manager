@@ -4,6 +4,7 @@ import '../db/database_helper.dart';
 import '../models/client.dart';
 import '../models/job.dart';
 import '../models/services.dart';
+import '../models/receipt.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -531,6 +532,12 @@ class DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.contacts),
             onPressed: () {
               Navigator.pushNamed(context, '/clients');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_long_sharp),
+            onPressed: () {
+              Navigator.pushNamed(context, '/receipts');
             },
           ),
         ],

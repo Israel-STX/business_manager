@@ -1,8 +1,10 @@
+import 'package:business_manager/screens/receipts_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/clients_screen.dart';
 import 'screens/services_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'screens/receipts_screen.dart';
 
 void main() {
   runApp(const BusinessManagerApp());
@@ -21,6 +23,7 @@ class BusinessManagerApp extends StatelessWidget {
         '/clients': (context) => const ClientsScreen(),
         '/services': (context) => const ServicesScreen(),
         '/calendar': (context) => const CalendarScreen(),
+        '/receipts': (context) => const ReceiptsScreen(),
       },
     );
   }
