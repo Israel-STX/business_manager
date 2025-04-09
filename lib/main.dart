@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/clients_screen.dart';
 import 'screens/services_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'theme.dart';
 
-void main() {
+// test data
+import 'db/seed_data.dart';
+
+// dev mode flag
+const bool isDevMode = true;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // create test db with option to wipe db if in dev mode
+  await SeedData.run(wipeExisting: isDevMode);
+
   runApp(const BusinessManagerApp());
 }
 
@@ -15,13 +27,9 @@ class BusinessManagerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Business Manager',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const DashboardScreen(),
-      routes: {
-        '/clients': (context) => const ClientsScreen(),
-        '/services': (context) => const ServicesScreen(),
-        '/calendar': (context) => const CalendarScreen(),
-      },
+      theme: AppThemes.bizTheme,
+      home: const SplashScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
