@@ -512,28 +512,7 @@ class DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text(
           'Dashboard',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () {
-              Navigator.pushNamed(context, '/calendar');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.assignment),
-            onPressed: () {
-              Navigator.pushNamed(context, '/services');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.contacts),
-            onPressed: () {
-              Navigator.pushNamed(context, '/clients');
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
