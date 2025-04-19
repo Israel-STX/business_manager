@@ -33,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // center the logo in the screen
       body: Center(
         child: Image.asset(
-          'logo/biz.png',
+          'assets/logo/biz.png',
         
         // set logo width
           width: 150,
