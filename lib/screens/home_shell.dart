@@ -5,7 +5,7 @@ import 'invoice_screen.dart';
 import 'clients_screen.dart';
 import 'services_screen.dart';
 
-// creates a bottom navigation bar to help move between screens
+// bottom navigation bar to switch between screens of the app
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -15,8 +15,11 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  // keeps track of the currently selected tab index
+  // at this moment its the dashboard or home screen
   int _currentIndex = 2;
 
+  // list of screens
   final List<Widget> _screens = const [
     CalendarScreen(),
     ClientsScreen(), 
@@ -28,8 +31,12 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // displays the screen that matches the selected index
       body: _screens[_currentIndex],
+
+      // the bottom navigation bar
       bottomNavigationBar: Theme(
+        // removes effects by making them transparent
         data: Theme.of(context).copyWith(
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
@@ -42,11 +49,17 @@ class _HomeShellState extends State<HomeShell> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
+
+          // fixed layout keeps all labels visible
           type: BottomNavigationBarType.fixed,
+
+          // sets the overall background and text colors
           backgroundColor: Colors.black,
           selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white70,
+          unselectedItemColor: Colors.white,
           showUnselectedLabels: true,
+
+          // icons and labels for each screen
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.calendar_today),

@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/splash_screen.dart';
-import 'screens/clients_screen.dart';
-import 'screens/services_screen.dart';
-import 'screens/calendar_screen.dart';
 import 'theme.dart';
 
-// test data
-import 'db/seed_data.dart';
-
-// dev mode flag
-const bool isDevMode = true;
-
 void main() async {
+  // this line makes sure flutter is ready
   WidgetsFlutterBinding.ensureInitialized();
 
-  // create test db with option to wipe db if in dev mode
-  await SeedData.run(wipeExisting: isDevMode);
+  // start firebase so we can use firestore
+  await Firebase.initializeApp();
 
+  // run the actual app
   runApp(const BusinessManagerApp());
 }
 
+// this is the main app widget
 class BusinessManagerApp extends StatelessWidget {
   const BusinessManagerApp({super.key});
 
@@ -28,8 +23,8 @@ class BusinessManagerApp extends StatelessWidget {
     return MaterialApp(
       title: 'Business Manager',
       theme: AppThemes.bizTheme,
-      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
+      home: const SplashScreen(),
     );
   }
 }

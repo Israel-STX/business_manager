@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "164783785323",
+    "project_id": "biz-buddy-bdd1e",
+    "storage_bucket": "biz-buddy-bdd1e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:164783785323:android:fe8cc1a756384862dbb82e",
+        "android_client_info": {
+          "package_name": "com.example.business_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDR-D3otI7RoS_GBZjbX_2YEYnfuYE4Gnk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
