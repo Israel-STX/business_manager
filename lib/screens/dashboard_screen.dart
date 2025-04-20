@@ -345,35 +345,26 @@ class DashboardScreenState extends State<DashboardScreen> {
                       labelText: "Select Client",
                     ),
                     value: selectedClient,
-                    items:
-                        clients
-                            .map(
-                              (client) => DropdownMenuItem(
-                                value: client,
-                                child: Text(client.name),
-                              ),
-                            )
-                            .toList(),
-                    onChanged:
-                        (value) => setDialogState(() => selectedClient = value),
+                    items: clients
+                        .map((client) => DropdownMenuItem(
+                      value: client,
+                      child: Text(client.name),
+                    ))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => selectedClient = value),
                   ),
                   DropdownButtonFormField<Services>(
                     decoration: const InputDecoration(
                       labelText: "Select Job Type",
                     ),
                     value: selectedJobType,
-                    items:
-                        services
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(type.name),
-                              ),
-                            )
-                            .toList(),
-                    onChanged:
-                        (value) =>
-                            setDialogState(() => selectedJobType = value),
+                    items: services
+                        .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type.name),
+                    ))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => selectedJobType = value),
                   ),
                   TextField(
                     controller: notesController,
@@ -438,7 +429,15 @@ class DashboardScreenState extends State<DashboardScreen> {
                     String formattedDate = intl.DateFormat.yMMMd(
                       'en_US',
                     ).format(selectedJobDate);
-                    String formattedTime = selectedTime.format(dialogContext);
+                    String formattedTime = intl.DateFormat('HH:mm').format(
+                      DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                        selectedTime.hour,
+                        selectedTime.minute,
+                      ),
+                    );
 
                     Job newJob = Job(
                       clientId: selectedClient!.id!,
@@ -449,11 +448,22 @@ class DashboardScreenState extends State<DashboardScreen> {
                       notes: notesController.text,
                     );
 
-                    await DatabaseHelper.instance.addJob(newJob);
-
-                    if (context.mounted) {
-                      _loadJobs();
-                      Navigator.pop(dialogContext);
+                    if (await DatabaseHelper.instance.checkJobConflict(
+                      formattedDate,
+                      formattedTime,
+                      selectedJobType!.id!,
+                      context, // Use the context of the DashboardScreen
+                    )) {
+                      // Conflict dialog is already shown by checkJobConflict
+                    } else {
+                      await DatabaseHelper.instance.addJobWithConflictCheck(
+                        newJob,
+                        selectedJobType!.id!,
+                      );
+                      if (context.mounted) {
+                        Navigator.pop(dialogContext);
+                        _loadJobs();
+                      }
                     }
                   },
                   child: const Text("Add Job"),

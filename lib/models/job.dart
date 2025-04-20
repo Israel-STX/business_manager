@@ -5,6 +5,7 @@ class Job {
   String time;
   String status;
   String jobName;
+  int? serviceId;
   String? notes;
   bool expanded;
   String? clientName;
@@ -16,6 +17,7 @@ class Job {
     required this.time,
     required this.status,
     required this.jobName,
+    this.serviceId,
     this.notes,
     this.expanded = false,
     this.clientName,
@@ -29,6 +31,7 @@ class Job {
       'time': time,
       'status': status,
       'job_name': jobName,
+      'service_id': serviceId,
       'notes': notes,
     };
   }
@@ -41,6 +44,7 @@ class Job {
       time: map['time'],
       status: map['status'],
       jobName: map['job_name'],
+      serviceId: map['service_id'],
       notes: map['notes'],
     );
   }
@@ -52,6 +56,7 @@ class Job {
     String? time,
     String? status,
     String? jobName,
+    int? serviceId,
     String? notes,
     bool? expanded,
     String? clientName,
@@ -63,6 +68,7 @@ class Job {
       time: time ?? this.time,
       status: status ?? this.status,
       jobName: jobName ?? this.jobName,
+      serviceId: serviceId ?? this.serviceId,
       notes: notes ?? this.notes,
       expanded: expanded ?? this.expanded,
       clientName: clientName ?? this.clientName,

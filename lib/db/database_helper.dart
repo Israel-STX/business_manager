@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:flutter/material.dart';
 import '../models/client.dart';
 import '../models/job.dart';
 import '../models/payment.dart';
@@ -11,7 +12,7 @@ class DatabaseHelper {
 
   DatabaseHelper._privateConstructor();
 
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -48,8 +49,10 @@ class DatabaseHelper {
         time TEXT NOT NULL,
         status TEXT NOT NULL CHECK(status IN ('Scheduled', 'Completed', 'Canceled')),
         job_name TEXT NOT NULL,
+        service_id INTEGER, -- Added service_id column
         notes TEXT,
-        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+        FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE SET NULL -- Optional: Handle deleted services
       )
     ''');
 
@@ -79,6 +82,11 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await db.execute(
         "ALTER TABLE jobs ADD COLUMN job_name TEXT NOT NULL DEFAULT '';",
+      );
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+        "ALTER TABLE jobs ADD COLUMN service_id INTEGER REFERENCES services(id) ON DELETE SET NULL;",
       );
     }
   }
@@ -136,11 +144,10 @@ class DatabaseHelper {
   Future<List<Job>> getJobs() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-    SELECT jobs.*, clients.name AS title, clients.address, clients.phone
-    FROM jobs
-    INNER JOIN clients ON jobs.client_id = clients.id
-  ''');
-
+      SELECT jobs.*, clients.name AS clientName
+      FROM jobs
+      INNER JOIN clients ON jobs.client_id = clients.id
+    ''');
     return result.map((map) => Job.fromMap(map)).toList();
   }
 
@@ -167,6 +174,16 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [jobId],
     );
+  }
+
+  Future<List<Job>> getJobsForClientAndDate(int clientId, String date) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'jobs',
+      where: 'client_id = ? AND date = ?',
+      whereArgs: [clientId, date],
+    );
+    return result.map((map) => Job.fromMap(map)).toList();
   }
 
   // **PAYMENT CRUD FUNCTIONS**
@@ -197,7 +214,7 @@ class DatabaseHelper {
     return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
   }
 
-  // **JOB TYPE CRUD FUNCTIONS** ✅
+  // **SERVICES CRUD FUNCTIONS** ✅
 
   Future<int> addService(Services services) async {
     final db = await instance.database;
@@ -208,6 +225,19 @@ class DatabaseHelper {
     final db = await instance.database;
     final result = await db.query('services');
     return result.map((map) => Services.fromMap(map)).toList();
+  }
+
+  Future<Services?> getServiceById(int id) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'services',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (result.isNotEmpty) {
+      return Services.fromMap(result.first);
+    }
+    return null;
   }
 
   Future<int> updateServices(Services services) async {
@@ -223,5 +253,78 @@ class DatabaseHelper {
   Future<int> deleteServices(int id) async {
     final db = await instance.database;
     return await db.delete('services', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // **CONFLICT CHECKING FOR JOB ADDITION**
+
+  Future<bool> checkJobConflict(String date, String time, int serviceId, BuildContext context) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'jobs',
+      where: 'date = ?',
+      whereArgs: [date],
+    );
+    final existingJobsOnDate = result.map((map) => Job.fromMap(map)).toList();
+
+    final newJobStartTime = _parseTime(time);
+    final service = await getServiceById(serviceId);
+    if (service == null) {
+      // Handle the case where the service is not found
+      return false;
+    }
+    final newJobEndTime = newJobStartTime.add(Duration(minutes: service.durationMinutes));
+
+    for (final existingJob in existingJobsOnDate) {
+      final existingJobStartTime = _parseTime(existingJob.time);
+      final existingJobService = await getServiceById(existingJob.serviceId!);
+      if (existingJobService == null || existingJob.serviceId == null) continue;
+      final existingJobEndTime = existingJobStartTime.add(Duration(minutes: existingJobService.durationMinutes));
+
+      if (_isTimeOverlapping(newJobStartTime, newJobEndTime, existingJobStartTime, existingJobEndTime)) {
+        _showConflictDialog(context, existingJob.time, existingJob.jobName);
+        return true; // Conflict found
+      }
+    }
+    return false; // No conflict
+  }
+
+  Future<void> addJobWithConflictCheck(Job job, int serviceId) async {
+    final db = await instance.database;
+    final jobMapWithServiceId = job.toMap();
+    jobMapWithServiceId['service_id'] = serviceId;
+    await db.insert('jobs', jobMapWithServiceId);
+  }
+
+  DateTime _parseTime(String timeString) {
+    final parts = timeString.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
+  bool _isTimeOverlapping(DateTime start1, DateTime end1, DateTime start2, DateTime end2) {
+    return start1.isBefore(end2) && end1.isAfter(start2);
+  }
+
+  void _showConflictDialog(BuildContext context, String conflictingTime, String conflictingJobName) {
+    print("Attempting to show conflict dialog");
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Appointment Conflict'),
+          content: Text('There is a job scheduled already at "$conflictingTime" ($conflictingJobName). Please try another time.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
