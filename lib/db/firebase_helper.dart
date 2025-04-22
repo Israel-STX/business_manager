@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/client.dart';
 import '../models/job.dart';
 import '../models/services.dart';
+import '../models/invoice.dart';
+
 
 /*
   this is how data is stored in firebase:
@@ -29,6 +31,7 @@ class FirebaseHelper {
   static final _clientsRef = _firestore.collection('clients');
   static final _jobsRef = _firestore.collection('jobs');
   static final _servicesRef = _firestore.collection('services');
+  static final _invoicesRef = _firestore.collection('invoices');
 
   // ---------- CLIENTS ----------
 
@@ -137,4 +140,23 @@ class FirebaseHelper {
     final snapshot = await _servicesRef.get();
     return snapshot.docs.map((doc) => MapEntry(doc.id, Services.fromMap(doc.data()))).toList();
   }
+
+// ---------- SERVICES ----------
+
+// get all invoices
+static Future<List<Invoice>> getInvoices() async {
+  final snapshot = await _invoicesRef.get();
+  return snapshot.docs.map((doc) => Invoice.fromMap(doc.data(), doc.id)).toList();
+}
+
+// add invoice
+static Future<void> addInvoice(Invoice invoice) async {
+  await _invoicesRef.add(invoice.toMap());
+}
+
+// delete invoice
+static Future<void> deleteInvoice(String id) async {
+  await _invoicesRef.doc(id).delete();
+}
+
 }
