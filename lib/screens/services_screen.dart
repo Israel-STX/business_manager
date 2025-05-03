@@ -82,7 +82,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
               final duration = int.tryParse(durationController.text.trim()) ?? 0;
               if (name.isEmpty || duration <= 0) return;
 
-              final newService = Services(name: name, durationMinutes: duration);
+              final newService = Services(id: '', name: name, durationMinutes: duration);
               await FirebaseHelper.addService(newService);
 
               if (context.mounted) Navigator.pop(context);
@@ -190,7 +190,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           final duration = int.tryParse(durationController.text.trim()) ?? 0;
                           if (name.isEmpty || duration <= 0) return;
 
-                          final updated = Services(name: name, durationMinutes: duration);
+                          final updated = Services(id: '',name: name, durationMinutes: duration);
                           await FirebaseHelper.updateService(docId, updated);
                           setState(() => _expandedId = null);
                         },

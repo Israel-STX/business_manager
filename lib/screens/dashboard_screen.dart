@@ -65,7 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final todayList = <Job>[];
       final upcoming = <Job>[];
 
-      // sort jobs into today and upcoming
       for (final job in allJobs) {
         if (job.date == todayKey) {
           todayList.add(job);
@@ -75,11 +74,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (jobDate.isAfter(today)) {
               upcoming.add(job);
             }
-          } catch (_) {} // ignore invalid dates
+          } catch (_) {}
         }
       }
 
-      // update the job lists
+      todayList.sort((a, b) {
+        final timeA = _timeStringToMinutes(a.time);
+        final timeB = _timeStringToMinutes(b.time);
+        return timeA.compareTo(timeB);
+      });
+
+      upcoming.sort((a, b) {
+        final dateComparison = a.date.compareTo(b.date);
+        if (dateComparison != 0) {
+          return dateComparison;
+        }
+        print('Comparing upcoming time A: ${a.time}, Time B: ${b.time}');
+        final timeA = _timeStringToMinutes(a.time);
+        final timeB = _timeStringToMinutes(b.time);
+        print('Minutes A: $timeA, Minutes B: $timeB, Comparison: ${timeA.compareTo(timeB)}');
+        return timeA.compareTo(timeB);
+      });
+      print('Upcoming jobs after sort: ${upcoming.map((j) => '${j.date} - ${j.time}').toList()}');
+
       setState(() {
         todayJobs = todayList;
         upcomingJobs = upcoming;
@@ -199,9 +216,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               clients: clients.isNotEmpty
                   ? clients
                   : [Client(id: '', name: 'Unknown', phone: '', address: '', notes: '')],
-              services: services.isNotEmpty
-                  ? services
-                  : [Services(name: 'Service', durationMinutes: 30)],
               onCancel: () => setState(() => _expandedJobId = null),
               onSave: () async {
                 // refresh clients after editing just in case
@@ -212,6 +226,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
+  }
+
+  int _timeStringToMinutes(String time) {
+    final format = DateFormat("h:mm a"); // "h" for 1-12 hour format
+    try {
+      final dateTime = format.parse(time);
+      return dateTime.hour * 60 + dateTime.minute;
+    } catch (e) {
+      // Handle potential parsing errors (e.g., invalid time format)
+      print("Error parsing time: $time - $e");
+      return 0; // Default to the beginning of the day in case of error
+    }
   }
 
   // builds the full dashboard screen

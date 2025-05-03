@@ -1,4 +1,7 @@
 class Services {
+  // ADDED
+  final String id;
+
   // name of the service
   final String name;
 
@@ -6,7 +9,7 @@ class Services {
   final int durationMinutes;
 
   // constructor to create a service object
-  Services({required this.name, required this.durationMinutes});
+  Services({required this.id, required this.name, required this.durationMinutes});
 
   // converts the service object into a map for firestore storage
   Map<String, dynamic> toMap() => {
@@ -15,7 +18,8 @@ class Services {
   };
 
   // creates a service object from a firestore map
-  factory Services.fromMap(Map<String, dynamic> map) => Services(
+  factory Services.fromMap(Map<String, dynamic> map, String id) => Services(
+    id: id,
     name: map['name'],
     durationMinutes: map['duration_minutes'],
   );

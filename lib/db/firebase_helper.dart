@@ -56,6 +56,11 @@ class FirebaseHelper {
     await _clientsRef.doc(docId).delete();
   }
 
+  // get jobs with client
+  static Future<QuerySnapshot> getJobsByClientId(String clientId) {
+    return _jobsRef.where('client_id', isEqualTo: clientId).get();
+  }
+
   // get a single client by its id
   static Future<Client?> getClientById(String docId) async {
     final doc = await _clientsRef.doc(docId).get();
@@ -78,7 +83,7 @@ class FirebaseHelper {
 
   // get all jobs
   static Future<List<Job>> getJobs() async {
-    final snapshot = await _jobsRef.get();
+    final snapshot = await _jobsRef.orderBy('date').orderBy('time').get();
     return snapshot.docs.map((doc) => Job.fromMap(doc.data(), doc.id)).toList();
   }
 
@@ -94,14 +99,17 @@ class FirebaseHelper {
 
   // get live job updates
   static Stream<List<Job>> listenToJobs() {
-    return _jobsRef.snapshots().map((snapshot) {
+    return _jobsRef.orderBy('date').orderBy('time').snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => Job.fromMap(doc.data(), doc.id)).toList();
     });
   }
 
   // get jobs for a specific date
   static Future<List<Job>> getJobsByDate(String date) async {
-    final snapshot = await _jobsRef.where('date', isEqualTo: date).get();
+    final snapshot = await _jobsRef
+        .where('date', isEqualTo: date)
+        .orderBy('time')
+        .get();
     return snapshot.docs.map((doc) => Job.fromMap(doc.data(), doc.id)).toList();
   }
 
@@ -115,7 +123,13 @@ class FirebaseHelper {
   // get all services
   static Future<List<Services>> getServices() async {
     final snapshot = await _servicesRef.get();
-    return snapshot.docs.map((doc) => Services.fromMap(doc.data())).toList();
+    return snapshot.docs.map((doc) => Services.fromMap(doc.data(), doc.id)).toList();
+  }
+
+  // get a single service by its id
+  static Future<Services?> getServiceById(String docId) async {
+    final doc = await _servicesRef.doc(docId).get();
+    return doc.exists ? Services.fromMap(doc.data()!, doc.id) : null;
   }
 
   // update service by doc id
@@ -131,14 +145,14 @@ class FirebaseHelper {
   // listen to service updates with ids
   static Stream<List<MapEntry<String, Services>>> listenToServices() {
     return _servicesRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => MapEntry(doc.id, Services.fromMap(doc.data()))).toList();
+      return snapshot.docs.map((doc) => MapEntry(doc.id, Services.fromMap(doc.data(), doc.id))).toList();
     });
   }
 
   // get all services with their doc ids
   static Future<List<MapEntry<String, Services>>> getServicesWithIds() async {
     final snapshot = await _servicesRef.get();
-    return snapshot.docs.map((doc) => MapEntry(doc.id, Services.fromMap(doc.data()))).toList();
+    return snapshot.docs.map((doc) => MapEntry(doc.id, Services.fromMap(doc.data(), doc.id))).toList();
   }
 
 // ---------- SERVICES ----------

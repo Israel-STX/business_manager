@@ -133,31 +133,84 @@ Future<void> showCreateJobDialog({
               // close without saving
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel", style: TextStyle(color: Colors.red)),
-              ),
-
-              // save the job
+                child: const Text("Cancel", style: TextStyle(color: Colors.red))),
               TextButton(
                 onPressed: () async {
-                  // make sure both client and service are selected
-                  if (selectedClient == null || selectedService == null) return;
+                  print("Attempting to add a new job...");
+                  if (selectedClient == null || selectedService == null) {
+                    print("Error: selectedClient or selectedService is null. Aborting job creation.");
+                    return;
+                  }
 
-                  // create a new job object
-                  final newJob = Job(
-                    clientId: selectedClient!.id,
-                    clientName: selectedClient!.name,
-                    clientPhone: selectedClient!.phone,
-                    jobName: selectedService!.name,
-                    date: DateFormat.yMMMd('en_US').format(selectedDate),
-                    time: selectedTime.format(context),
-                    notes: notesController.text.trim(),
-                  );
+                  String formattedDate = DateFormat.yMMMd('en_US').format(selectedDate);
+                  String formattedTime = selectedTime.format(context);
 
-                  // add job to firestore
-                  await FirebaseHelper.addJob(newJob);
+                  print("Selected Client ID: ${selectedClient!.id}");
+                  print("Selected Service ID: ${selectedService!.id}");
+                  print("Formatted Date: $formattedDate");
+                  print("Formatted Time: $formattedTime");
+                  print("Notes: ${notesController.text.trim()}");
 
-                  // close the dialog if still on screen
-                  if (context.mounted) Navigator.pop(context);
+                  int newJobStartTimeMinutes = selectedTime.hour * 60 + selectedTime.minute;
+                  int newJobEndTimeMinutes = newJobStartTimeMinutes + selectedService!.durationMinutes;
+
+                  List<Job> existingJobsOnDate = await FirebaseHelper.getJobsByDate(formattedDate);
+                  bool hasConflict = false;
+
+                  for (final existingJob in existingJobsOnDate) {
+
+                    final existingJobService = await FirebaseHelper.getServiceById(existingJob.serviceId!);
+
+                    if (existingJobService != null) {
+                      DateFormat timeFormat = DateFormat("h:mm a");
+                      DateTime existingJobStartTimeDateTime = timeFormat.parse(existingJob.time);
+                      int existingJobStartTimeMinutes = existingJobStartTimeDateTime.hour * 60 + existingJobStartTimeDateTime.minute;
+                      int existingJobEndTimeMinutesWithBuffer = existingJobStartTimeMinutes + existingJobService.durationMinutes + 30; // Add 30 min buffer to end
+
+                      // Calculate the new job's interval with a 30 min buffer at the start
+                      int newJobStartTimeMinutesWithBuffer = newJobStartTimeMinutes - 30;
+                      if (newJobStartTimeMinutesWithBuffer < 0) newJobStartTimeMinutesWithBuffer = 0; // Prevent negative start time
+
+                      // Check for overlaps with the existing job's interval (including its end buffer)
+                      if (newJobStartTimeMinutesWithBuffer < existingJobEndTimeMinutesWithBuffer &&
+                          newJobEndTimeMinutes > existingJobStartTimeMinutes) {
+                        hasConflict = true;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (hasConflict) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('The selected time slot overlaps with an existing job (including travel time).')),
+                      );
+                    }
+                  } else {
+                    final newJob = Job(
+                      clientId: selectedClient!.id,
+                      clientName: selectedClient!.name,
+                      clientPhone: selectedClient!.phone,
+                      jobName: selectedService!.name,
+                      date: formattedDate,
+                      time: formattedTime,
+                      notes: notesController.text.trim(),
+                      serviceId: selectedService!.id!,
+                    );
+                    print("Attempting to add job to Firestore: ${newJob.toMap()}");
+                    try {
+                      await FirebaseHelper.addJob(newJob);
+                      print("Job added successfully to Firestore.");
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      print("Error adding job to Firestore: $e");
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to add job. Error: $e')),
+                        );
+                      }
+                    }
+                  }
                 },
                 child: const Text("Add Job"),
               ),
