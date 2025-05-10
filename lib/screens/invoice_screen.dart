@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:open_file/open_file.dart';
 import '../db/firebase_helper.dart';
 import '../models/invoice.dart';
 import '../models/job.dart';
@@ -26,21 +28,60 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     loadClients();
   }
 
+  // load all invoices from firestore
   void loadInvoices() async {
     final data = await FirebaseHelper.getInvoices();
     setState(() => invoices = data);
   }
 
+  // load all jobs from firestore
   void loadJobs() async {
     final data = await FirebaseHelper.getJobs();
     setState(() => jobs = data);
   }
 
+  // load all clients from firestore
   void loadClients() async {
     final data = await FirebaseHelper.getClients();
     setState(() => clients = data);
   }
 
+  // launch email app
+  void _sendEmail(Invoice invoice) async {
+    final taxRate = 0.0825;
+    final taxAmount = invoice.cost * taxRate;
+    final total = invoice.cost + taxAmount;
+
+    final body = '''
+Hello ${invoice.clientName},
+
+Here are the details of your invoice:
+
+- Service: ${invoice.service}
+- Subtotal: \$${invoice.cost.toStringAsFixed(2)}
+- Tax (8.25%): \$${taxAmount.toStringAsFixed(2)}
+- Total Due: \$${total.toStringAsFixed(2)}
+- Due Date: ${invoice.paymentDue}
+
+Thank you for choosing Biz Buddy!
+''';
+
+    final uri = Uri(
+      scheme: 'mailto',
+      path: invoice.clientEmail ?? '',
+      query: Uri.encodeFull('subject=Invoice from Biz Buddy&body=$body'),
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch email app')),
+      );
+    }
+  }
+
+  // builds the full screen
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,6 +91,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         itemCount: invoices.length,
         itemBuilder: (context, index) {
           final invoice = invoices[index];
+
           return Card(
             color: Colors.white,
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -66,7 +108,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   Text(invoice.clientPhone),
                   const Divider(height: 20),
                   Text("Service: ${invoice.service}"),
-                  if (invoice.notes != null && invoice.notes!.isNotEmpty)
+                  if (invoice.notes?.isNotEmpty ?? false)
                     Text("Notes: ${invoice.notes}"),
                   const SizedBox(height: 8),
                   Row(
@@ -80,8 +122,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // delete invoice
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.black),
                         onPressed: () async {
                           if (invoice.id != null) {
                             await FirebaseHelper.deleteInvoice(invoice.id!);
@@ -89,9 +132,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                           }
                         },
                       ),
+                      // preview pdf
                       IconButton(
-                        icon: const Icon(Icons.email, color: Colors.blue),
-                        onPressed: () => PdfHelper.generateInvoicePdf(invoice),
+                        icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                        onPressed: () async {
+                          final filePath = await PdfHelper.generateInvoicePdf(invoice);
+                          await OpenFile.open(filePath);
+                        },
+                      ),
+                      // send email
+                      IconButton(
+                        icon: const Icon(Icons.email, color: Colors.black),
+                        onPressed: () => _sendEmail(invoice),
                       ),
                     ],
                   ),
@@ -104,6 +156,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final jobs = await FirebaseHelper.getJobs();
+          if (!mounted) return;
           showCreateInvoiceDialog(
             context: context,
             jobs: jobs,

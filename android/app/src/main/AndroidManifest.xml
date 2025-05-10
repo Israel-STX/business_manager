@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <uses-permission android:name="android.permission.INTERNET"/>
 <queries>
-    <intent>
+     <intent>
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="http"/>
@@ -18,6 +18,14 @@
     <intent>
         <action android:name="android.intent.action.SENDTO"/>
         <data android:scheme="sms"/>
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.SENDTO"/>
+        <data android:scheme="mailto"/>
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.PROCESS_TEXT"/>
+        <data android:mimeType="text/plain"/>
     </intent>
 </queries>
 

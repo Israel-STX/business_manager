@@ -6,20 +6,24 @@ import '../models/services.dart';
 import '../db/firebase_helper.dart';
 import '../theme.dart';
 
-// this shows a popup form to create a new job
+// shows a popup form to create a new job
 Future<void> showCreateJobDialog({
   required BuildContext context,
   required List<Client> clients,
   required List<Services> services,
 }) async {
-  // store selected values and text input
+  // selected values
   Client? selectedClient;
   Services? selectedService;
+
+  // default to current date and time
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
+
+  // controller for notes input
   final notesController = TextEditingController();
 
-  // show the actual dialog
+  // build the dialog
   await showDialog(
     context: context,
     builder: (context) {
@@ -28,21 +32,13 @@ Future<void> showCreateJobDialog({
           return AlertDialog(
             backgroundColor: Theme.of(context).cardColor,
             title: const Text("Create Job"),
-
-            // job form inputs
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // dropdown to select a client
+                  // dropdown for selecting client
                   DropdownButtonFormField<Client>(
-                    decoration: const InputDecoration(
-                      labelText: "Select Client",
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    dropdownColor: Colors.white,
-                    style: const TextStyle(color: Colors.black),
+                    decoration: const InputDecoration(labelText: "Select Client"),
                     value: selectedClient,
                     items: clients.map((client) {
                       return DropdownMenuItem(
@@ -54,15 +50,9 @@ Future<void> showCreateJobDialog({
                   ),
                   const SizedBox(height: 10),
 
-                  // dropdown to select a service
+                  // dropdown for selecting service
                   DropdownButtonFormField<Services>(
-                    decoration: const InputDecoration(
-                      labelText: "Select Service",
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    dropdownColor: Colors.white,
-                    style: const TextStyle(color: Colors.black),
+                    decoration: const InputDecoration(labelText: "Select Service"),
                     value: selectedService,
                     items: services.map((s) {
                       return DropdownMenuItem(
@@ -74,14 +64,14 @@ Future<void> showCreateJobDialog({
                   ),
                   const SizedBox(height: 10),
 
-                  // text field to type in notes
+                  // input for optional notes
                   TextField(
                     controller: notesController,
                     decoration: const InputDecoration(labelText: "Notes"),
                   ),
                   const SizedBox(height: 12),
 
-                  // row to pick a date
+                  // row for selecting date
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -96,15 +86,13 @@ Future<void> showCreateJobDialog({
                             lastDate: DateTime(2100),
                             builder: (context, child) => AppThemes.datePickerTheme(context, child),
                           );
-                          if (picked != null) {
-                            setDialogState(() => selectedDate = picked);
-                          }
+                          if (picked != null) setDialogState(() => selectedDate = picked);
                         },
                       ),
                     ],
                   ),
 
-                  // row to pick a time
+                  // row for selecting time
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -117,9 +105,7 @@ Future<void> showCreateJobDialog({
                             initialTime: selectedTime,
                             builder: (context, child) => AppThemes.timePickerTheme(context, child),
                           );
-                          if (picked != null) {
-                            setDialogState(() => selectedTime = picked);
-                          }
+                          if (picked != null) setDialogState(() => selectedTime = picked);
                         },
                       ),
                     ],
@@ -128,85 +114,82 @@ Future<void> showCreateJobDialog({
               ),
             ),
 
-            // buttons at the bottom of the popup
+            // dialog buttons
             actions: [
-              // close without saving
+              // cancel button
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel", style: TextStyle(color: Colors.red))),
+                child: const Text("Cancel", style: TextStyle(color: Colors.red)),
+              ),
+
+              // add job button
               TextButton(
                 onPressed: () async {
-                  print("Attempting to add a new job...");
-                  if (selectedClient == null || selectedService == null) {
-                    print("Error: selectedClient or selectedService is null. Aborting job creation.");
-                    return;
-                  }
+                  // don't proceed without required fields
+                  if (selectedClient == null || selectedService == null) return;
 
-                  String formattedDate = DateFormat.yMMMd('en_US').format(selectedDate);
-                  String formattedTime = selectedTime.format(context);
+                  final client = selectedClient!;
+                  final service = selectedService!;
 
-                  print("Selected Client ID: ${selectedClient!.id}");
-                  print("Selected Service ID: ${selectedService!.id}");
-                  print("Formatted Date: $formattedDate");
-                  print("Formatted Time: $formattedTime");
-                  print("Notes: ${notesController.text.trim()}");
+                  // format selected date and time
+                  final formattedDate = DateFormat.yMMMd('en_US').format(selectedDate);
+                  final formattedTime = selectedTime.format(context);
 
-                  int newJobStartTimeMinutes = selectedTime.hour * 60 + selectedTime.minute;
-                  int newJobEndTimeMinutes = newJobStartTimeMinutes + selectedService!.durationMinutes;
+                  // convert selected time to minutes
+                  final newStart = selectedTime.hour * 60 + selectedTime.minute;
+                  final newEnd = newStart + service.durationMinutes;
 
-                  List<Job> existingJobsOnDate = await FirebaseHelper.getJobsByDate(formattedDate);
+                  // get all jobs on selected date
+                  final existingJobs = await FirebaseHelper.getJobsByDate(formattedDate);
                   bool hasConflict = false;
 
-                  for (final existingJob in existingJobsOnDate) {
+                  for (final job in existingJobs) {
+                    final jobService = await FirebaseHelper.getServiceById(job.serviceId);
+                    if (jobService != null) {
+                      final parsed = DateFormat("h:mm a").parse(job.time);
+                      final start = parsed.hour * 60 + parsed.minute;
+                      final endWithBuffer = start + jobService.durationMinutes + 30;
 
-                    final existingJobService = await FirebaseHelper.getServiceById(existingJob.serviceId!);
+                      // add 30 min buffer before new job
+                      final newStartBuffered = (newStart - 30).clamp(0, double.infinity).toInt();
 
-                    if (existingJobService != null) {
-                      DateFormat timeFormat = DateFormat("h:mm a");
-                      DateTime existingJobStartTimeDateTime = timeFormat.parse(existingJob.time);
-                      int existingJobStartTimeMinutes = existingJobStartTimeDateTime.hour * 60 + existingJobStartTimeDateTime.minute;
-                      int existingJobEndTimeMinutesWithBuffer = existingJobStartTimeMinutes + existingJobService.durationMinutes + 30; // Add 30 min buffer to end
-
-                      // Calculate the new job's interval with a 30 min buffer at the start
-                      int newJobStartTimeMinutesWithBuffer = newJobStartTimeMinutes - 30;
-                      if (newJobStartTimeMinutesWithBuffer < 0) newJobStartTimeMinutesWithBuffer = 0; // Prevent negative start time
-
-                      // Check for overlaps with the existing job's interval (including its end buffer)
-                      if (newJobStartTimeMinutesWithBuffer < existingJobEndTimeMinutesWithBuffer &&
-                          newJobEndTimeMinutes > existingJobStartTimeMinutes) {
+                      // check for conflict
+                      if (newStartBuffered < endWithBuffer && newEnd > start) {
                         hasConflict = true;
                         break;
                       }
                     }
                   }
 
+                  // show error if conflict exists
                   if (hasConflict) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('The selected time slot overlaps with an existing job (including travel time).')),
+                        const SnackBar(
+                          content: Text('The selected time overlaps with an existing job (including buffer).'),
+                        ),
                       );
                     }
                   } else {
+                    // create and save new job
                     final newJob = Job(
-                      clientId: selectedClient!.id,
-                      clientName: selectedClient!.name,
-                      clientPhone: selectedClient!.phone,
-                      jobName: selectedService!.name,
+                      clientId: client.id,
+                      clientName: client.name,
+                      clientPhone: client.phone,
+                      jobName: service.name,
                       date: formattedDate,
                       time: formattedTime,
                       notes: notesController.text.trim(),
-                      serviceId: selectedService!.id!,
+                      serviceId: service.id,
                     );
-                    print("Attempting to add job to Firestore: ${newJob.toMap()}");
+
                     try {
                       await FirebaseHelper.addJob(newJob);
-                      print("Job added successfully to Firestore.");
                       if (context.mounted) Navigator.pop(context);
                     } catch (e) {
-                      print("Error adding job to Firestore: $e");
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to add job. Error: $e')),
+                          SnackBar(content: Text('Failed to add job: $e')),
                         );
                       }
                     }

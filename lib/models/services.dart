@@ -1,5 +1,4 @@
 class Services {
-  // ADDED
   final String id;
 
   // name of the service

@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart' as intl;
 import '../db/firebase_helper.dart';
 import '../models/job.dart';
+import '../theme.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -58,7 +59,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _jobsByDate[key] ?? [];
   }
 
-  // builds a white job card with info
+  // builds a job card with info and a delete button
   Widget _buildJobCard(Job job) {
     return Card(
       color: Colors.white,
@@ -78,6 +79,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
             if (job.notes != null && job.notes!.isNotEmpty)
               Text('Notes: ${job.notes}', style: Theme.of(context).textTheme.bodyMedium),
           ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete, color: Colors.black),
+          onPressed: () async {
+            // confirm before deleting
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: Colors.white,
+                title: const Text('Delete Job?', style: TextStyle(color: Colors.black)),
+                content: const Text(
+                  'Are you sure you want to delete this job?',
+                  style: TextStyle(color: Colors.black),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.black)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              ),
+            );
+
+            // delete job if confirmed
+            if (confirm == true && job.id != null) {
+              await FirebaseHelper.deleteJob(job.id!);
+            }
+          },
         ),
       ),
     );
@@ -129,38 +163,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 );
               },
             ),
-
-            // top header for month and arrows
-            headerStyle: const HeaderStyle(
-              titleCentered: true,
-              formatButtonVisible: false,
-              titleTextStyle: TextStyle(color: Colors.black),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
-            ),
-
-            // day of week labels
-            daysOfWeekStyle: const DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Colors.black),
-              weekendStyle: TextStyle(color: Colors.black),
-            ),
-
-            // calendar day styles
-            calendarStyle: const CalendarStyle(
-              defaultTextStyle: TextStyle(color: Colors.black),
-              weekendTextStyle: TextStyle(color: Colors.black),
-              selectedDecoration: BoxDecoration(
-                color: Colors.grey,
-                shape: BoxShape.circle,
-              ),
-              todayDecoration: BoxDecoration(
-                color: Colors.black,
-                shape: BoxShape.circle,
-              ),
-              markerDecoration: BoxDecoration(
-                color: Colors.transparent,
-              ),
-            ),
+            
+            // theme for calendar
+            headerStyle: AppThemes.calendarHeaderStyle,
+            daysOfWeekStyle: AppThemes.calendarDaysOfWeekStyle,
+            calendarStyle: AppThemes.calendarDayStyle,
           ),
 
           const SizedBox(height: 20),

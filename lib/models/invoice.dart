@@ -1,29 +1,19 @@
 class Invoice {
-  // required info about the client
-  final String clientName;
+  final String clientName; 
   final String clientAddress;
-  final String clientPhone;
-
-  // the job/service name
-  final String service;
-
-  // extra notes if any (optional)
-  final String? notes;
-
-  // how much the service costs
-  final double cost;
-
-  // when payment is due
-  final String paymentDue;
-
-  // invoice id from firebase (optional)
+  final String clientPhone; 
+  final String clientEmail; 
+  final String service; 
+  final String? notes; 
+  final double cost; 
+  final String paymentDue; 
   final String? id;
 
-  // make a new invoice
   Invoice({
     required this.clientName,
     required this.clientAddress,
     required this.clientPhone,
+    required this.clientEmail,
     required this.service,
     this.notes,
     required this.cost,
@@ -31,26 +21,28 @@ class Invoice {
     this.id,
   });
 
-  // turn this invoice into a map to save in firebase
+  // convert invoice to map for firestore
   Map<String, dynamic> toMap() => {
         'clientName': clientName,
         'clientAddress': clientAddress,
         'clientPhone': clientPhone,
+        'clientEmail': clientEmail,
         'service': service,
         'notes': notes,
         'cost': cost,
         'paymentDue': paymentDue,
       };
 
-  // turn firebase map back into an invoice
+  // create invoice from firestore map
   factory Invoice.fromMap(Map<String, dynamic> map, String id) => Invoice(
         id: id,
         clientName: map['clientName'] ?? '',
         clientAddress: map['clientAddress'] ?? '',
         clientPhone: map['clientPhone'] ?? '',
+        clientEmail: map['clientEmail'] ?? '',
         service: map['service'] ?? '',
         notes: map['notes'],
-        cost: (map['cost'] as num).toDouble(), // cast to double safely
+        cost: (map['cost'] as num).toDouble(),
         paymentDue: map['paymentDue'] ?? '',
       );
 }

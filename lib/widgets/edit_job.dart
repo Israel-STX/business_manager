@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/job.dart';
@@ -8,7 +6,7 @@ import '../models/services.dart';
 import '../db/firebase_helper.dart';
 import '../theme.dart';
 
-// this widget shows the job editor dropdown under a job card
+// widget that appears under a job card to let you edit it
 class EditJobDropdown extends StatefulWidget {
   final Job job;
   final List<Client> clients;
@@ -29,7 +27,7 @@ class EditJobDropdown extends StatefulWidget {
 
 class _EditJobDropdownState extends State<EditJobDropdown> {
   late String selectedClientId;
-  Services? selectedService; // Make it nullable initially
+  Services? selectedService;
   late TextEditingController notesController;
   late DateTime selectedDate;
   late TimeOfDay selectedTime;
@@ -38,6 +36,7 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
   void initState() {
     super.initState();
 
+    // initialize with job values
     selectedClientId = widget.job.clientId;
     notesController = TextEditingController(text: widget.job.notes ?? '');
     selectedDate = DateFormat.yMMMd('en_US').parse(widget.job.date);
@@ -49,29 +48,21 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
     _loadInitialService();
   }
 
+  // load the current service linked to this job
   Future<void> _loadInitialService() async {
-    if (widget.job.serviceId != null) {
-      final service = await FirebaseHelper.getServiceById(widget.job.serviceId!);
-      if (service != null) {
-        setState(() {
-          selectedService = service;
-        });
-      } else {
-        // Handle the case where the serviceId in the job is invalid
-        setState(() {
-          selectedService = Services(id: '', name: 'Unknown Service', durationMinutes: 0);
-        });
-      }
-    }
+    final service = await FirebaseHelper.getServiceById(widget.job.serviceId);
+    setState(() {
+      selectedService = service ?? Services(id: '', name: 'Unknown Service', durationMinutes: 0);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
-          // pick a client
+          // dropdown for client selection
           DropdownButtonFormField<String>(
             value: selectedClientId,
             decoration: const InputDecoration(
@@ -79,75 +70,55 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
               filled: true,
               fillColor: Colors.white,
             ),
-            dropdownColor: Colors.white,
-            style: const TextStyle(color: Colors.black),
-            items: widget.clients
-                .map((c) => DropdownMenuItem<String>(
-              value: c.id,
-              child: Text(c.name, style: const TextStyle(color: Colors.black)),
-            ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  selectedClientId = value;
-                });
-              }
-            },
+            items: widget.clients.map((c) {
+              return DropdownMenuItem(value: c.id, child: Text(c.name));
+            }).toList(),
+            onChanged: (value) => setState(() => selectedClientId = value ?? selectedClientId),
           ),
           const SizedBox(height: 12),
 
-          // pick a service
+          // dropdown for service selection
           FutureBuilder<List<Services>>(
             future: FirebaseHelper.getServices(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircularProgressIndicator(); // Loading indicator
+                return const CircularProgressIndicator();
               }
-              if (snapshot.hasError) {
-                return Text('Error loading services: ${snapshot.error}');
-              }
-              final availableServices = snapshot.data!;
 
-              Services? initialSelectedService;
-              if (widget.job.serviceId != null) {
-                initialSelectedService = availableServices.firstWhere(
-                      (s) => s.id == widget.job.serviceId,
-                  orElse: () => Services(id: '', name: 'Unknown Service', durationMinutes: 0),
-                );
+              if (snapshot.hasError || !snapshot.hasData) {
+                return Text('Error loading services');
               }
+
+              final availableServices = snapshot.data!;
+              final currentService = availableServices.firstWhere(
+                (s) => s.id == widget.job.serviceId,
+                orElse: () => selectedService ?? Services(id: '', name: 'Unknown', durationMinutes: 0),
+              );
 
               return DropdownButtonFormField<Services>(
-                value: initialSelectedService ?? selectedService,
+                value: selectedService ?? currentService,
                 decoration: const InputDecoration(
                   labelText: 'Service',
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                dropdownColor: Colors.white,
-                style: const TextStyle(color: Colors.black),
-                items: availableServices
-                    .map((s) => DropdownMenuItem<Services>(
-                  value: s,
-                  child: Text(s.name, style: const TextStyle(color: Colors.black)),
-                ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => selectedService = value);
-                },
+                items: availableServices.map((s) {
+                  return DropdownMenuItem(value: s, child: Text(s.name));
+                }).toList(),
+                onChanged: (value) => setState(() => selectedService = value),
               );
             },
           ),
           const SizedBox(height: 12),
 
-          // notes
+          // notes input
           TextFormField(
             controller: notesController,
             decoration: const InputDecoration(labelText: 'Notes', filled: true),
           ),
           const SizedBox(height: 12),
 
-          // pick a date
+          // date picker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -167,7 +138,8 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
               ),
             ],
           ),
-          // pick a time
+
+          // time picker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -187,16 +159,11 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
           ),
           const SizedBox(height: 12),
 
-          // buttons to cancel, delete, or save the job
+          // action buttons: cancel, delete, save
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // cancel and close editor
-              TextButton(
-                onPressed: widget.onCancel,
-                child: const Text('Cancel'),
-              ),
-              // delete the job from firestore
+              TextButton(onPressed: widget.onCancel, child: const Text('Cancel')),
               TextButton(
                 onPressed: () async {
                   await FirebaseHelper.deleteJob(widget.job.id!);
@@ -205,39 +172,33 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
                 child: const Text('Delete', style: TextStyle(color: Colors.red)),
               ),
               const SizedBox(width: 8),
-              // save the job with new info
               ElevatedButton(
                 onPressed: () async {
                   if (selectedService == null) return;
 
-                  // find the selected client object
-                  final selectedClient = widget.clients.firstWhere(
-                        (c) => c.id == selectedClientId,
+                  final client = widget.clients.firstWhere(
+                    (c) => c.id == selectedClientId,
                     orElse: () => Client(id: '', name: 'Unknown'),
                   );
 
-                  // make a new job with updated info, including serviceId
                   final updated = widget.job.copyWith(
-                    clientId: selectedClient.id,
-                    clientName: selectedClient.name,
-                    clientPhone: selectedClient.phone,
+                    clientId: client.id,
+                    clientName: client.name,
+                    clientPhone: client.phone,
                     jobName: selectedService!.name,
-                    serviceId: selectedService!.id!,
+                    serviceId: selectedService!.id,
                     date: DateFormat.yMMMd('en_US').format(selectedDate),
                     time: selectedTime.format(context),
                     notes: notesController.text.trim(),
                   );
 
-                  // update job in firestore
                   await FirebaseHelper.updateJob(widget.job.id!, updated);
-
-                  // close the dropdown
                   widget.onSave();
                 },
                 child: const Text('Save'),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

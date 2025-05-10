@@ -11,7 +11,7 @@ class Job {
   // name of the job
   final String jobName;
 
-  // id of service ADDED
+  // id of service
   final String serviceId;
 
   // name of the client
@@ -33,7 +33,7 @@ class Job {
     required this.date,
     required this.time,
     required this.jobName,
-    required this.serviceId, // ADDED
+    required this.serviceId,
     required this.clientName,
     required this.clientPhone,
     this.notes,
@@ -46,7 +46,7 @@ class Job {
     'date': date,
     'time': time,
     'job_name': jobName,
-    'service_id': serviceId, //ADDED
+    'service_id': serviceId,
     'clientName': clientName,
     'clientPhone': clientPhone,
     'notes': notes,
@@ -59,7 +59,7 @@ class Job {
     date: map['date'],
     time: map['time'],
     jobName: map['job_name'],
-    serviceId: map['service_id'], //ADDED
+    serviceId: map['service_id'],
     clientName: map['clientName'],
     clientPhone: map['clientPhone'],
     notes: map['notes'],
@@ -75,7 +75,7 @@ class Job {
     String? date,
     String? time,
     String? notes,
-    String? serviceId, //ADDED
+    String? serviceId,
   }) {
   return Job(
     id: id ?? this.id,
@@ -86,7 +86,7 @@ class Job {
     date: date ?? this.date,
     time: time ?? this.time,
     notes: notes ?? this.notes,
-    serviceId: serviceId ?? this.serviceId, //ADDED
+    serviceId: serviceId ?? this.serviceId,
     );
   }
 }
