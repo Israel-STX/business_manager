@@ -137,6 +137,23 @@ class FirebaseHelper {
     await _servicesRef.doc(docId).update(service.toMap());
   }
 
+  // Check if a service is currently used by any job
+  static Future<bool> isServiceInUse(String serviceId) async {
+    if (serviceId.isEmpty) {
+      return false;
+    }
+    try {
+      final QuerySnapshot snapshot = await _jobsRef
+          .where('service_id', isEqualTo: serviceId)
+          .limit(1) // if at least one jon with service exists
+          .get();
+      return snapshot.docs.isNotEmpty; // True if any job uses this serviceId
+    } catch (e) {
+      print("FirebaseHelper.isServiceInUse: Error checking service usage for $serviceId: $e");
+      rethrow;
+    }
+  }
+
   // delete service by doc id
   static Future<void> deleteService(String docId) async {
     await _servicesRef.doc(docId).delete();

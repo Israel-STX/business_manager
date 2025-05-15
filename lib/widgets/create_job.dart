@@ -126,35 +126,68 @@ Future<void> showCreateJobDialog({
               TextButton(
                 onPressed: () async {
                   // don't proceed without required fields
-                  if (selectedClient == null || selectedService == null) return;
+                  if (selectedClient == null || selectedService == null) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select a client and a service.')),
+                      );
+                    }
+                    return;
+                  }
 
                   final client = selectedClient!;
                   final service = selectedService!;
 
                   // format selected date and time
                   final formattedDate = DateFormat.yMMMd('en_US').format(selectedDate);
-                  final formattedTime = selectedTime.format(context);
+                  // final formattedTime = selectedTime.format(context);
 
-                  // convert selected time to minutes
-                  final newStart = selectedTime.hour * 60 + selectedTime.minute;
-                  final newEnd = newStart + service.durationMinutes;
+                  // convert selected time to minutes for conflict checking
+                  final newJobStartTimeInMinutes = selectedTime.hour * 60 + selectedTime.minute;
+                  final newJobEndTimeInMinutes = newJobStartTimeInMinutes + service.durationMinutes;
 
                   // get all jobs on selected date
-                  final existingJobs = await FirebaseHelper.getJobsByDate(formattedDate);
+                  List<Job> existingJobsOnDate;
+                  try {
+                    existingJobsOnDate = await FirebaseHelper.getJobsByDate(formattedDate);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error fetching existing jobs: $e')),
+                      );
+                    }
+                    return;
+                  }
+
                   bool hasConflict = false;
 
-                  for (final job in existingJobs) {
-                    final jobService = await FirebaseHelper.getServiceById(job.serviceId);
-                    if (jobService != null) {
-                      final parsed = DateFormat("h:mm a").parse(job.time);
-                      final start = parsed.hour * 60 + parsed.minute;
-                      final endWithBuffer = start + jobService.durationMinutes + 30;
+                  for (final existingJob in existingJobsOnDate) {
+                    Services? existingJobService;
+                    try {
+                      if (existingJob.serviceId.isNotEmpty) {
+                        existingJobService = await FirebaseHelper.getServiceById(existingJob.serviceId);
+                      } else {
+                        print("Skipping conflict check for existing job ${existingJob.id} due to missing serviceId.");
+                        continue;
+                      }
+                    } catch (e) {
+                      print("Error fetching service for existing job ${existingJob.id} during conflict check: $e");
+                      continue;
+                    }
 
-                      // add 30 min buffer before new job
-                      final newStartBuffered = (newStart - 30).clamp(0, double.infinity).toInt();
+                    if (existingJobService != null) {
+                      DateTime parsedExistingJobTime;
+                      try {
+                        parsedExistingJobTime = DateFormat("h:mm a").parse(existingJob.time);
+                      } catch (e) {
+                        print("Error parsing time for existing job ${existingJob.id} ('${existingJob.time}'): $e. Skipping for conflict check.");
+                        continue; // Skip if time format is wrong
+                      }
 
-                      // check for conflict
-                      if (newStartBuffered < endWithBuffer && newEnd > start) {
+                      final existingJobStartTimeInMinutes = parsedExistingJobTime.hour * 60 + parsedExistingJobTime.minute;
+                      final existingJobEndTimeInMinutes = existingJobStartTimeInMinutes + existingJobService.durationMinutes;
+
+                      if (newJobStartTimeInMinutes < existingJobEndTimeInMinutes && newJobEndTimeInMinutes > existingJobStartTimeInMinutes) {
                         hasConflict = true;
                         break;
                       }
@@ -166,7 +199,7 @@ Future<void> showCreateJobDialog({
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('The selected time overlaps with an existing job (including buffer).'),
+                          content: Text('The selected time directly overlaps with an existing job.'),
                         ),
                       );
                     }
@@ -177,8 +210,8 @@ Future<void> showCreateJobDialog({
                       clientName: client.name,
                       clientPhone: client.phone,
                       jobName: service.name,
-                      date: formattedDate,
-                      time: formattedTime,
+                      date: formattedDate, // Use the 'en_US' formatted date for storage
+                      time: selectedTime.format(context), // Use locale-aware time format for storage/display
                       notes: notesController.text.trim(),
                       serviceId: service.id,
                     );

@@ -174,26 +174,104 @@ class _EditJobDropdownState extends State<EditJobDropdown> {
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () async {
-                  if (selectedService == null) return;
+                  if (selectedService == null) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select a service.')),
+                      );
+                    }
+                    return;
+                  }
 
+                  final formattedDateForConflictCheck = DateFormat.yMMMd('en_US').format(selectedDate);
+                  final newStartTimeInMinutes = selectedTime.hour * 60 + selectedTime.minute;
+                  final newEndTimeInMinutes = newStartTimeInMinutes + selectedService!.durationMinutes;
+
+                  List<Job> otherExistingJobsOnDate;
+                  try {
+                    final allJobsOnDate = await FirebaseHelper.getJobsByDate(formattedDateForConflictCheck);
+                    otherExistingJobsOnDate = allJobsOnDate.where((job) => job.id != widget.job.id).toList();
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error fetching jobs for conflict check: $e')),
+                      );
+                    }
+                    return;
+                  }
+
+                  bool hasConflict = false;
+                  for (final otherJob in otherExistingJobsOnDate) {
+                    Services? otherJobService;
+                    try {
+                      if (otherJob.serviceId.isNotEmpty) {
+                        otherJobService = await FirebaseHelper.getServiceById(otherJob.serviceId);
+                      } else {
+                        print("Skipping conflict check for job ${otherJob.id} due to missing serviceId.");
+                        continue;
+                      }
+                    } catch (e) {
+                      print("Error fetching service for other job ${otherJob.id} during conflict check: $e");
+                      continue;
+                    }
+
+                    if (otherJobService != null) {
+                      DateTime parsedOtherJobTime;
+                      try {
+                        parsedOtherJobTime = DateFormat("h:mm a").parse(otherJob.time);
+                      } catch (e) {
+                        print("Error parsing time for other job ${otherJob.id} ('${otherJob.time}'): $e. Skipping for conflict check.");
+                        continue;
+                      }
+
+                      final otherJobStartTimeInMinutes = parsedOtherJobTime.hour * 60 + parsedOtherJobTime.minute;
+                      final otherJobEndTimeInMinutes = otherJobStartTimeInMinutes + otherJobService.durationMinutes;
+
+                      if (newStartTimeInMinutes < otherJobEndTimeInMinutes && newEndTimeInMinutes > otherJobStartTimeInMinutes) {
+                        hasConflict = true;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (hasConflict) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('The selected time overlaps with another existing job.'),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
+                  // If no conflict, proceed to update the job
                   final client = widget.clients.firstWhere(
-                    (c) => c.id == selectedClientId,
-                    orElse: () => Client(id: '', name: 'Unknown'),
+                        (c) => c.id == selectedClientId,
+                    orElse: () => Client(id: selectedClientId, name: 'Unknown Client', phone: '', address: '', email: '', notes: ''),
                   );
 
-                  final updated = widget.job.copyWith(
+                  final updatedJob = widget.job.copyWith(
                     clientId: client.id,
                     clientName: client.name,
                     clientPhone: client.phone,
                     jobName: selectedService!.name,
                     serviceId: selectedService!.id,
-                    date: DateFormat.yMMMd('en_US').format(selectedDate),
+                    date: formattedDateForConflictCheck,
                     time: selectedTime.format(context),
                     notes: notesController.text.trim(),
                   );
 
-                  await FirebaseHelper.updateJob(widget.job.id!, updated);
-                  widget.onSave();
+                  try {
+                    await FirebaseHelper.updateJob(widget.job.id!, updatedJob);
+                    widget.onSave();
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to update job: $e')),
+                      );
+                    }
+                  }
                 },
                 child: const Text('Save'),
               ),

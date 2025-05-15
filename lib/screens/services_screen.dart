@@ -74,8 +74,46 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  // confirm and delete service
-  void _confirmDelete(String id, Services service) {
+  void _attemptDeleteService(String id, Services service) async {
+
+    bool isUsed = false;
+    try {
+      isUsed = await FirebaseHelper.isServiceInUse(id);
+    } catch (e) {
+      // check fails
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not verify service usage. Please try again. Error: $e')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    if (isUsed) {
+      // popup if service is in use
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          title: const Text("Cannot Delete Service"),
+          content: Text("${service.name} is currently assigned to one or more jobs. Please remove it from all jobs before deleting, or consider editing the service if an update is needed."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Service is not in use
+      _showActualDeleteConfirmationDialog(id, service);
+    }
+  }
+
+  void _showActualDeleteConfirmationDialog(String id, Services service) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -86,8 +124,22 @@ class _ServicesScreenState extends State<ServicesScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
             onPressed: () async {
-              await FirebaseHelper.deleteService(id);
-              if (context.mounted) Navigator.pop(context);
+              try {
+                await FirebaseHelper.deleteService(id);
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${service.name} deleted successfully.')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete ${service.name}: $e')),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text("Delete"),
@@ -137,7 +189,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     children: [
                       TextButton(onPressed: () => setState(() => _expandedId = null), child: const Text('Cancel')),
                       TextButton(
-                        onPressed: () => _confirmDelete(id, service),
+                        onPressed: () => _attemptDeleteService(id, service),
                         style: TextButton.styleFrom(foregroundColor: Colors.red),
                         child: const Text('Delete'),
                       ),

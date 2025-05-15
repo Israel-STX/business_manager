@@ -26,4 +26,15 @@ class Services {
   // overrides toString to show name and duration nicely
   @override
   String toString() => '$name - $durationMinutes mins';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true; // If they are the same instance in memory, they are equal.
+
+    return other is Services && // Check if the 'other' object is also a Services instance.
+        other.id == id; // Compare them based on their 'id' field.
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
